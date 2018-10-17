@@ -3,6 +3,9 @@ Contains Message implementation
 """
 import json
 import time
+from typing import Type, TypeVar
+
+msg = TypeVar('msg', bound='Message')  # Used for type-hinting Message.status_message()
 
 
 class Message:
@@ -26,6 +29,12 @@ class Message:
         If there are errors, such as JSON being improperly structured or a missing attribute,
         self.error is set to True, which signals whichever class that is using Message that the
         message is bad
+
+        Correctly assembled example message:
+
+         '{"id": "example_id", "timestamp": 512331, "payload": "hello, I am a payload"}'
+
+
         """
         try:
             message = self.raw_message.decode('utf-8')
@@ -56,16 +65,17 @@ class Message:
         return self._error_text
 
     @classmethod
-    def status_message(cls, message_body: str):
+    def status_message(cls: Type[msg], message_body: str) -> msg:
         """
-        Used for alternative constructor for status messages, rather than
-        text messages from chat clients
-        :return:
+        Alternative constructor used to make status messages, rather than
+        text messages from chat clients.
+
+        Given that this method instantiates the object from None rather than bytes, which
+        sets the error attributes, this method includes statements which clear the error state
+        of the object.
+        :return: message.Message
         """
         rv = cls(None)
         rv.error, rv._error_text, rv.msg_id = False, None, None
         rv.timestamp, rv.payload = time.time(), message_body
         return rv
-
-
-

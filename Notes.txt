@@ -3,9 +3,6 @@ Centralized chatroom, running on QoS2 (To ensure delivery exactly once)
 Clients use async capabilities in lieu of threading?  Or maybe just use threads, since the throughput isn't going to be
 all that high?
 
-client class
-    Feeds outgoing and incoming messages into a FIFO queue, which is then used to display the messages to the screen
-
 message class
     Message container
     Has:
@@ -19,9 +16,12 @@ Queue:
 
 Display classes:
     Fetches messages from queue, displays them somehow (Be that on a CLI or a graphical screen, or what have you)
+    Run in a different thread than Publisher so that you can have input and output in a single program.
 
 Subscription:
     Subscribes to a given topic, turns the fetched messages into Messages, and adds valid ones to the Queue
 
 Publisher classes:
     Takes user input and sends it to the broker.
+    Turns the broker into the single source of truth for messages.  If they aren't received by the broker, they will
+    not be displayed by any clients connected to the network.

@@ -10,7 +10,7 @@ from client.message import Message
 
 
 class SubscriptionError(BaseException):
-    errors = {}
+    pass
 
 
 class Subscription:
@@ -30,10 +30,18 @@ class Subscription:
             using it.  If it isn't, than a randomly generated one will be used instead.
         """
         self.client = mqtt.Client(client_id=client_id)
-        self.client.queue = queue_ # TODO Adding in the queue this way won't work properly.
-        # I don't need an instance variable so much as a global queue
+        self.client.queue = queue_
         self.client.topic = topic
         self.client.on_connect = self.on_connect
+        self.client.on_subscribe = self.on_subscribe
+        self.client.on_message = self.on_message
+        self.client.on_disconnect = self.on_disconnect
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.disconnect()
 
     @staticmethod
     def on_connect(client: mqtt.Client, user_data, flags: Dict, return_code: int) -> None:
@@ -72,58 +80,64 @@ class Subscription:
         if client.queue is None:
             raise SubscriptionError('Queue absent from instance. Aborting.')
         if client.topic is None:
-            raise SubscriptionError('Topic absent from instance.  Aborting')
+            raise SubscriptionError('Topic absent from instance.  Aborting.')
         client.subscribe(client.topic, qos=2)
         status = Message.status_message('Connected.')
         client.queue.put(status)
 
     @staticmethod
-    def on_subscribe(client: mqtt.Client, user_data: Dict, message_id, granted_qos):
+    def on_subscribe(client: mqtt.Client, user_data, message_id: int, granted_qos) -> None:
         """
 
         :type client: mqtt.Client instance for this callback
-        :param user_data:
-        :param message_id:
+        :param user_data: the private user data as set in mqtt.Client() or mqtt.Client.user_data_set()
+        :param message_id: integer, the message id
         :param granted_qos:
         :return:
         """
-        status = Message.status_message('Subscription active')
+        status = Message.status_message('Subscription active.')
         client.queue.put(status)
 
     @staticmethod
-    def on_message(client: mqtt.Client, userdata: Dict, message):
+    def on_message(client: mqtt.Client, user_data, message: mqtt.MQTTMessage) -> None:
         """
-        :param client:
-        :param userdata:
-        :param message:
+        :param client: mqtt.Client instance for this callback
+        :param user_data: the private user data as set in mqtt.Client() or mqtt.Client.user_data_set()
+        :param message: mqtt.MQTTMessage object
         :return:
         """
         msg = Message(message.payload)
-        if message.error:
-            print('Message error')
-            return
+        if msg.error:
+            msg.payload = 'Message error.'
+        client.queue.put(msg)
+
+    @staticmethod
+    def on_disconnect(client: mqtt.Client, user_data, return_code: int) -> None:
+        """
+        :param client: mqtt.Client instance for this callback
+        :param user_data: the private user data as set in mqtt.Client() or mqtt.Client.user_data_set()
+        :param return_code:
+        :return:
+        """
+        if return_code != 0:
+            msg = Message.status_message('Disconnected unexpectedly.')
         else:
-            client.queue.put(msg)
+            msg = Message.status_message('Disconnected.')
+        client.queue.put(msg)
 
     def connect(self, hostname: str, port: int = 1883, keep_alive: int = 60) -> None:
         """
         :param hostname:
-        :param port:
-        :param keep_alive:
+        :param port: int, defaults to 1883
+        :param keep_alive: maximum period in seconds allowed between communications with the broker.
+         If no other messages are being exchanged, this controls the rate at which the client will
+         send ping messages to the broker.
         :return:
         """
         self.client.connect(hostname, port, keep_alive)
 
-    def subscribe(self, topic: str, qos: int) -> None:
-        """
-        :param topic:
-        :param qos:
-        :return:
-        """
-        pass
-
     def disconnect(self) -> None:
         """
-        :return:
+        :return: None
         """
         self.client.disconnect()
