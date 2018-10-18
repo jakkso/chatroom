@@ -10,13 +10,11 @@ def run() -> None:
     """
     Run the program
     """
-    client_id = 'Alexander!'
+    client_id = 'Bob123!'
     queue_ = queue.Queue()
     topic = "chat_test"
     hostname = "localhost"
     shell = Shell(client_id, queue_, topic, hostname)
-
-
 
 
 if __name__ == '__main__':
