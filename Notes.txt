@@ -20,6 +20,9 @@ Display classes:
 
 Subscription:
     Subscribes to a given topic, turns the fetched messages into Messages, and adds valid ones to the Queue
+    TODO:
+        If Subscription.client is started in a threaded manner via loop_start() and it throws an exception, it cannot be
+        caught in the caller context. This means that I'll have to write my own threaded loop in order to deal with it?
 
 Publisher classes:
     Takes user input and sends it to the broker.

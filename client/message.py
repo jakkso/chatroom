@@ -32,7 +32,7 @@ class Message:
 
         Correctly assembled example message:
 
-         '{"id": "example_id", "timestamp": 512331, "payload": "hello, I am a payload"}'
+         '{"id": 123, "timestamp": 512331, "payload": "hello, I am a payload"}'
 
 
         """
@@ -42,7 +42,7 @@ class Message:
             self.msg_id = json_['id']
             self.timestamp = json_['timestamp']
             self.payload = json_['payload']
-            self.timestamp = time.time()
+            self.timestamp = json_['timestamp']
         except AttributeError as e:
             self.error = True
             self._error_text = f'{AttributeError}: {e}'

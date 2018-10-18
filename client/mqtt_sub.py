@@ -2,6 +2,8 @@
 Contains Subscription, which contains methods that fetch messages from the mqtt broker
 """
 import queue
+from sys import getsizeof as size
+import time
 from typing import Dict
 
 import paho.mqtt.client as mqtt
@@ -10,6 +12,9 @@ from client.message import Message
 
 
 class SubscriptionError(BaseException):
+    """
+    Empty class to serve as framework for raising exceptions
+    """
     pass
 
 
@@ -22,7 +27,7 @@ class Subscription:
     come in.  Those callbacks are defined as static functions attached to this class.
     """
 
-    def __init__(self, client_id: str = None, queue_: queue.Queue=None, topic: str = None):
+    def __init__(self, client_id: str = None, queue_: queue.Queue = None, topic: str = None):
         """
         :param topic: string, topic channel to subscribe to.
         :type queue_: queue.Queue
@@ -42,6 +47,17 @@ class Subscription:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.disconnect()
+        self.client.loop_stop()
+
+    @staticmethod
+    def _create_payload(message: str, message_id: int) -> str:
+        """
+        Creates JSON-parser-friendly string.
+        :param message: str
+        :param message_id: id
+        :return:
+        """
+        return f'{{"id": {message_id}, "timestamp": {time.time()}, "payload": "{message}"}}'
 
     @staticmethod
     def on_connect(client: mqtt.Client, user_data, flags: Dict, return_code: int) -> None:
@@ -77,9 +93,9 @@ class Subscription:
 
         # If the message queue is not added correctly the the client instance, than messages
         # cannot be correctly passed
-        if client.queue is None:
+        if not isinstance(client.queue, queue.Queue):
             raise SubscriptionError('Queue absent from instance. Aborting.')
-        if client.topic is None:
+        if client.topic is None or not isinstance(client.topic, str) or len(client.topic) == 0:
             raise SubscriptionError('Topic absent from instance.  Aborting.')
         client.subscribe(client.topic, qos=2)
         status = Message.status_message('Connected.')
@@ -141,3 +157,22 @@ class Subscription:
         :return: None
         """
         self.client.disconnect()
+
+    def publish(self, message: str, message_id: int) -> None:
+        """
+        Publishes payload to broker
+        :param message: string
+        :param message_id: integer.
+        :return: mqtt.MQTTMessageInfo
+        """
+        payload: str = self._create_payload(message, message_id)
+        max_payload_bytes = 268435455
+        if size(payload) > max_payload_bytes:
+            msg = Message.status_message('Message too large.')
+            self.client.queue.put(msg)
+            return
+        return_value: mqtt.MQTTMessageInfo = self.client.publish(self.client.topic, payload, qos=2)
+        if return_value.rc == 0:  # Publication successful
+            return
+        else:
+            raise SubscriptionError(f'MQTTMessageInfo error code: {return_value.rc}')
