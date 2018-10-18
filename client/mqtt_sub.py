@@ -141,8 +141,9 @@ class Subscription:
             msg = Message.status_message('Disconnected.')
         client.queue.put(msg)
 
-    def connect(self, hostname: str, port: int = 1883, keep_alive: int = 60) -> None:
+    def connect(self, hostname: str, port: int = 1883, keep_alive: int = 60, start_loop: bool = False) -> None:
         """
+        :param start_loop:
         :param hostname:
         :param port: int, defaults to 1883
         :param keep_alive: maximum period in seconds allowed between communications with the broker.
@@ -151,6 +152,8 @@ class Subscription:
         :return:
         """
         self.client.connect(hostname, port, keep_alive)
+        if start_loop:
+            self.client.loop_start()
 
     def disconnect(self) -> None:
         """

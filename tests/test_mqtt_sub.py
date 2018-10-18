@@ -98,7 +98,3 @@ def test_publish_payload() -> None:
     c.client.loop_stop()
     c.disconnect()
     assert len(items) > 5
-
-
-if __name__ == '__main__':
-    test_sub_creation_with_sub()
